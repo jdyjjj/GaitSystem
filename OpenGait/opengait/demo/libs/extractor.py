@@ -107,7 +107,7 @@ def gaitcompare(cfgs, embsdict:dict, gids):
     print(matrix_dict)
     return pg_dict
 
-def extract(exp, args, cfgs, gids):
+def extract(cfgs, gids):
     ########### extract计划就留这些
     embsdic = {}
     if not osp.exists(cfgs["path"]["embspath"]):
