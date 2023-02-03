@@ -1,9 +1,9 @@
 
 from extractor import gaitcompare
 
-def recognise(cfgs, embsdic, gids):
+def recognise(cfgs, embsdic, probe):
     # compare
-    pgdict = gaitcompare(cfgs, embsdic, gids)
+    pgdict = gaitcompare(cfgs, embsdic, probe)
     print("################## probe - gallery ##################")
     print(pgdict)
     return pgdict

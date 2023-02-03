@@ -3,6 +3,8 @@ import os
 import os.path as osp
 import torch
 import time
+import copy
+import pickle
 
 from yolox.exp import get_exp
 from loguru import logger
@@ -19,7 +21,7 @@ cfgs = {
     },
     "path":{
         "jsonpath": "./datasets/CASIA-B/demo.json",
-        "gallerypath": "./opengait/demo/output/Inputvideos/demo6.mp4",
+        "gallerypath": "./opengait/demo/output/Inputvideos/demo6.mp4", #demo6
         "probepath": "./opengait/demo/output/Inputvideos/demo4.mp4",
         "savesil_path": "./opengait/demo/output/Sil/",
         "pkl_save_path": "./opengait/demo/output/Pkl/",
@@ -105,6 +107,13 @@ def make_parser():
     return parser
 
 def main(exp, args, cfgs):
+    # 要分成 录入信息 和其他那些东西两部分！！！！
+    # 录入信息就是要单独就seg
+
+
+
+
+
     output_dir = cfgs["path"]["video_output_path"]
     os.makedirs(output_dir, exist_ok=True)
 
@@ -119,25 +128,40 @@ def main(exp, args, cfgs):
     args.device = torch.device("cuda" if args.device == "gpu" else "cpu")
     logger.info("Args: {}".format(args))
     model = loadckpt(exp, args, cfgs)
+    # print(model)
+    # bytetrack的id怎么处理的，，，
+    # model1 = copy.copy(model)
+    # model1 = loadckpt(exp, args, cfgs)
+
     
 
 
     print(output_dir)
     # seg分割图片
-    gids, minid = seg(exp, args, cfgs, video_save_folder, model)
-    print(gids, minid)
+    # seg(exp, args, cfgs, video_save_folder, cfgs["path"]["gallerypath"], model)
+
+    
+    # print(gids1, minid1)
     # extract提取特征
     # 以后肯定不能有 gids这个参数！！！！
     # gids = [1, 2]
     # minid = 3
-    embsdic = extract(cfgs, gids)
+    extract(cfgs, cfgs["path"]["probepath"])
+    # extract(cfgs, cfgs["path"]["gallerypath"])
 
-    # recognise 比对环节
-    if args.comparegait:
-        pgdict = recognise(cfgs, embsdic, gids)
+    # # recognise 比对环节
+    # if args.comparegait:
+    #     embs_path = "{}{}.pkl".format(cfgs["path"]["embspath"], "embeddings")
+    #     if osp.exists(embs_path):
+    #         print("========= Load Embs..... ==========")
+    #         with open(embs_path,'rb') as f:	
+    #             embsdic = pickle.load(f)	
+    #             # print(embsdic)
+    #             print("========= Finish Load Embs..... ==========")
+    #     pgdict = recognise(cfgs, embsdic, cfgs["path"]["probepath"])
 
-    if args.save_result:
-        writeresult(model, video_save_folder, cfgs, exp, args, pgdict, minid)
+    #     if args.save_result:
+    #         writeresult(model, video_save_folder, cfgs, exp, args, pgdict, cfgs["path"]["probepath"])
 
 
 if __name__ == "__main__":
