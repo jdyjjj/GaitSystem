@@ -303,13 +303,17 @@ def seg(video_path, video_save_folder):
     # print(img1)
     return result
 
-def getsil(video_path):
+def getsil(video_path, sil_save_path):
     save_video_name = video_path.split("/")[-1]
     save_video_name = save_video_name.split(".")[0]
-    feats = pretreat(Path(seg_cfgs["path"]["savesil_path"], save_video_name), Path(seg_cfgs["path"]["pkl_save_path"]), 
-                64, 4, False, seg_cfgs["gait"]["dataset"])
-
+    # feats = pretreat(Path(sil_save_path, save_video_name), Path(seg_cfgs["path"]["pkl_save_path"]),
+    #             64, 4, False, seg_cfgs["gait"]["dataset"])
+    # print(feats)
+    feats = img2pickle(Path(sil_save_path, save_video_name), Path(seg_cfgs["path"]["pkl_save_path"]),
+                64, False, seg_cfgs["gait"]["dataset"])
     print(feats)
+
+    # print(feats)
     return(feats)
 
 
