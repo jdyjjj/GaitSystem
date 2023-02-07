@@ -13,15 +13,15 @@ from extractor import extract
 from segment import *
 from recognition import recognise
 
-cfgs = {  
-    "gaitmodel":{
+cfgs = {
+    "gaitmodel": {
         # "model_type": "Baseline",
         "model_type": "BaselineDemo",
         "cfg_path": "./configs/baseline/baseline_GREW.yaml",
     },
-    "path":{
+    "path": {
         "jsonpath": "./datasets/CASIA-B/demo.json",
-        "gallerypath": "./opengait/demo/output/Inputvideos/demo6.mp4", #demo6
+        "gallerypath": "./opengait/demo/output/Inputvideos/demo6.mp4",  # demo6
         "probepath": "./opengait/demo/output/Inputvideos/demo4.mp4",
         "savesil_path": "./opengait/demo/output/Sil/",
         "pkl_save_path": "./opengait/demo/output/Pkl/",
@@ -29,17 +29,18 @@ cfgs = {
         "whole_pkl_save_path": "./opengait/demo/output/Gaitembs/",
         "video_output_path": "./opengait/demo/output/Outputvideos/"
     },
-    "model":{
+    "model": {
         "gait_model": "./opengait/demo/checkpoints/gait_model/Baseline-250000.pt",
-        "seg_model" : "./opengait/demo/checkpoints/seg_model/human_pp_humansegv1_lite_192x192_inference_model_with_softmax/deploy.yaml",
-        "ckpt" :    "./opengait/demo/checkpoints/bytetrack_model/bytetrack_x_mot17.pth.tar",
+        "seg_model": "./opengait/demo/checkpoints/seg_model/human_pp_humansegv1_lite_192x192_inference_model_with_softmax/deploy.yaml",
+        "ckpt": "./opengait/demo/checkpoints/bytetrack_model/bytetrack_x_mot17.pth.tar",
         "exp_file": "./opengait/demo/checkpoints/bytetrack_model/yolox_x_mix_det.py",
     },
-    "gait":{
+    "gait": {
         # "dataset": "CASIAB",
         "dataset": "GREW",
     }
 }
+
 
 def make_parser():
     parser = argparse.ArgumentParser("OpenGait Demo!")
@@ -79,10 +80,10 @@ def make_parser():
     )
     parser.add_argument('--min_box_area', type=float, default=10, help='filter out tiny boxes')
     parser.add_argument("--mot20", dest="mot20", default=False, action="store_true", help="test mot20.")
-    
-    parser.add_argument("--img_size",type=int, default=64, help="img_size")
-    parser.add_argument("--workers",type=int, default=4, help="workers")
-    parser.add_argument("--verbose",type=bool, default=False, help="verbose")
+
+    parser.add_argument("--img_size", type=int, default=64, help="img_size")
+    parser.add_argument("--workers", type=int, default=4, help="workers")
+    parser.add_argument("--verbose", type=bool, default=False, help="verbose")
     # gait
     parser.add_argument('--local_rank', type=int, default=0,
                         help="passed by torch.distributed.launch module")
@@ -106,6 +107,7 @@ def make_parser():
     )
     return parser
 
+
 def main(args, cfgs):
     # 里面的方法留视频输入路径和输出路径，把配置文件转移到其他各自脚本里面
     output_dir = cfgs["path"]["video_output_path"]
@@ -117,13 +119,12 @@ def main(args, cfgs):
         timestamp = time.strftime("%Y_%m_%d_%H_%M_%S", current_time)
         video_save_folder = osp.join(vis_folder, timestamp)
 
-
     print(output_dir)
     # seg分割图片
     video = "./opengait/demo/output/Inputvideos/demo1.mp4"
-    seg(args, video_save_folder, cfgs["path"]["probepath"])
-    seg(args, video_save_folder, cfgs["path"]["gallerypath"])
-    seg(args, video_save_folder, video)
+    seg(cfgs["path"]["probepath"], video_save_folder)
+    seg(cfgs["path"]["gallerypath"], video_save_folder)
+    seg(video, video_save_folder)
 
     # extract提取特征
     extract(cfgs["path"]["probepath"])
@@ -135,13 +136,13 @@ def main(args, cfgs):
         embs_path = "{}{}.pkl".format(cfgs["path"]["embspath"], "embeddings")
         if osp.exists(embs_path):
             print("========= Load Embs..... ==========")
-            with open(embs_path,'rb') as f:	
-                embsdic = pickle.load(f)	
+            with open(embs_path, 'rb') as f:
+                embsdic = pickle.load(f)
                 # print(embsdic)
                 print("========= Finish Load Embs..... ==========")
-        pgdict1 = recognise(embsdic, cfgs["path"]["probepath"])
-        pgdict2 = recognise(embsdic, video)
-        pgdict3 = recognise(embsdic, cfgs["path"]["gallerypath"])
+        pgdict1 = recognise(cfgs["path"]["probepath"], embsdic)
+        pgdict2 = recognise(video, embsdic)
+        pgdict3 = recognise(cfgs["path"]["gallerypath"], embsdic)
         # pgdict = recognise(cfgs, embsdic, cfgs["path"]["probepath"])
 
         if args.save_result:
@@ -153,14 +154,8 @@ if __name__ == "__main__":
     # exp = get_exp(cfgs["model"]["exp_file"], None)
     main(args, cfgs)
 
-
-
-
 # def main(exp, args, cfgs):
 #     # 里面的方法留视频输入路径和输出路径，把配置文件转移到其他各自脚本里面
-
-
-
 
 
 #     output_dir = cfgs["path"]["video_output_path"]
