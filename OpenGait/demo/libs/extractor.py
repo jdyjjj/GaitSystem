@@ -22,8 +22,8 @@ extractor_cfgs = {
         "cfg_path": "./configs/baseline/baseline_GREW.yaml",
     },
     "path":{
-        "embspath": "./opengait/demo/output/Embs/", # 3
-        "whole_pkl_save_path": "./opengait/demo/output/Gaitembs/", # 2
+        "embspath": "./demo/output/Embs/", # 3
+        "whole_pkl_save_path": "./demo/output/Gaitembs/", # 2
     },
 }
 
@@ -45,13 +45,20 @@ def gait(embsdict:dict, video):
     cfgloader = config_loader(extractor_cfgs["gaitmodel"]["cfg_path"])
     loader = gaitmodel.get_loader(
                 cfgloader['data_cfg'], save_video_name)
+    feats = []
+    print("#####################!")
+    print(loader)
     for inputs in loader:
+        print("=====================")
+        print(inputs)
         ipts = gaitmodel.inputs_pretreament(inputs)
-        id = inputs[1][0] + 1 # id都是0很怪
+        print("======================ipts")
+        print(ipts)
+        id = inputs[1][0] + 1
         type = inputs[2][0] 
         view = inputs[3][0]
         savePklPath = "{}/{}/{}/{}".format(extractor_cfgs["path"]["whole_pkl_save_path"], save_video_name, type, view)
-        print(savePklPath)
+        # print(savePklPath)
         if not os.path.exists(savePklPath):
             os.makedirs(savePklPath)
         savePklName = "{}/{}.pkl".format(savePklPath, inputs[3][0])
@@ -60,22 +67,23 @@ def gait(embsdict:dict, video):
         pickle.dump(embs, pkl)
         if save_video_name not in embsdict:
             embsdict[save_video_name] = []
-        ap = {}
-        ap[type] = {}
-        ap[type][view] = embs
-        
+        feat = {}
+        feat[type] = {}
+        feat[type][view] = embs
+        # 这块估计有问题
         if len(embsdict[save_video_name]) == 0:
-            embsdict[save_video_name].append(ap)
-        else:
-            for idx, e in enumerate(embsdict[save_video_name]):
-                if str(e) == str(ap):
-                    break
-                elif idx == len(embsdict[save_video_name])-1:
-                    embsdict[save_video_name].append(ap)            
+            embsdict[save_video_name].append(feat)
+            feats.append(feat)
+        # else:
+        #     for idx, e in enumerate(embsdict[save_video_name]):
+        #         if str(e) == str(feat):
+        #             break
+        #         elif idx == len(embsdict[save_video_name])-1:
+        #             embsdict[save_video_name].append(feat)            
         del ipts
+    return feats    
 
-
-def gaitcompare(embsdict:dict, probe):
+def gaitcompare(probe, embsdict:dict):
     print("=========== Begin ==============")
     probe_name = probe.split("/")[-1]
     probe_name = probe_name.split(".")[0]
@@ -103,6 +111,68 @@ def gaitcompare(embsdict:dict, probe):
     print(matrix_dict)
     return pg_dict
 
+
+def gaitfeat_compare(probe_feat, gallery_feat:dict):
+    print("=========== Begin ==============")
+    # key = probe_feat.items()
+    for item in probe_feat.items():
+	    target = item[0]
+    # probe_name = probe.split("/")[-1]
+    # probe_name = probe_name.split(".")[0]
+    print("========= Begin comparing ==========")
+    gaitmodel = loadModel(**extractor_cfgs["gaitmodel"])
+    gaitmodel.requires_grad_(False)
+    gaitmodel.eval()
+    cfgloader = config_loader(extractor_cfgs["gaitmodel"]["cfg_path"])
+    loader = gaitmodel.get_loader(
+                cfgloader['data_cfg'], target)
+    pg_dict = {}
+    matrix_dict = {}
+    for inputs in loader:
+        pid = target + "-" + inputs[2][0] 
+        print("########### pid ############")
+        print(pid)
+        ipts = gaitmodel.inputs_pretreament(inputs)
+        retval, embs = gaitmodel.forward(ipts)
+        gid, iddict = gc.compareid(retval, gallery_feat, pid, 100)
+        print(pid, gid)
+        pg_dict[pid] = gid
+        matrix_dict[pid] = iddict
+    print("################## matrix_dict ##################")
+    print(matrix_dict)
+    return pg_dict
+
+def gait_sil(embsdict:dict, sils):
+    print("========= Begin storing gait information ==========")
+    gaitmodel = loadModel(**extractor_cfgs["gaitmodel"])
+    gaitmodel.requires_grad_(False)
+    gaitmodel.eval()
+    feats = {}
+    for inputs in sils:
+        ipts = gaitmodel.inputs_pretreament(inputs)
+        id = inputs[1][0]
+        if id not in feats:
+            feats[id] = []
+        type = inputs[2][0] 
+        view = inputs[3][0]
+        savePklPath = "{}/{}/{}/{}".format(extractor_cfgs["path"]["whole_pkl_save_path"], id, type, view)
+        if not os.path.exists(savePklPath):
+            os.makedirs(savePklPath)
+        savePklName = "{}/{}.pkl".format(savePklPath, inputs[3][0])
+        retval, embs = gaitmodel.forward(ipts)
+        pkl = open(savePklName, 'wb')
+        pickle.dump(embs, pkl)
+        if id not in embsdict:
+            embsdict[id] = []
+        feat = {}
+        feat[type] = {}
+        feat[type][view] = embs
+        if len(embsdict[id]) == 0:
+            embsdict[id].append(feat)
+        feats[id].append(feat)        
+    return feats    
+
+# def extract(video, save_embs_path):#改成这样
 def extract(video):
     embsdic = {}
     if not osp.exists(extractor_cfgs["path"]["embspath"]):
@@ -112,16 +182,37 @@ def extract(video):
         print("========= Load Embs..... ==========")
         with open(embs_path,'rb') as f:	
             embsdic = pickle.load(f)	
-            print(embsdic)
+            # print(embsdic)
             print("========= Finish Load Embs..... ==========")
 
-    gait(embsdic, video)
-    print("####### embs #########")
-    print(embsdic)
+    video_feat = gait(embsdic, video)
+    # print("####### embs #########")
+    # print(embsdic)
     # save embslist
     pkl = open(embs_path, 'wb')
     pickle.dump(embsdic, pkl)
+    return video_feat
     
+# def extract_sil(probe_sil, save_embs_path):
+def extract_sil(sil, save_path):
+    embsdic = {}
+    if not osp.exists(extractor_cfgs["path"]["embspath"]):
+        os.makedirs(extractor_cfgs["path"]["embspath"])
+    embs_path = "{}{}.pkl".format(extractor_cfgs["path"]["embspath"], "embeddings")
+    if osp.exists(embs_path):
+        print("========= Load Embs..... ==========")
+        with open(embs_path,'rb') as f:	
+            embsdic = pickle.load(f)	
+            # print(embsdic)
+            print("========= Finish Load Embs..... ==========")
+
+    video_feat = gait_sil(embsdic, sil)
+    # print("####### embs #########")
+    # print(embsdic)
+    # save embslist
+    # pkl = open(embs_path, 'wb')
+    # pickle.dump(embsdic, pkl)
+    return video_feat
 
 
 

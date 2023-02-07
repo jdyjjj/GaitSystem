@@ -1,8 +1,15 @@
-from extractor import gaitcompare
+from extractor import gaitcompare, gaitfeat_compare
 
-def recognise(embsdic, probe):
+def recognise(probe, embsdic):
     # compare
-    pgdict = gaitcompare(embsdic, probe)
+    pgdict = gaitcompare(probe, embsdic)
+    print("################## probe - gallery ##################")
+    print(pgdict)
+    return pgdict
+
+def recognise_feat(probe_feat, gallery_feat):
+    # compare
+    pgdict = gaitfeat_compare(probe_feat, gallery_feat)
     print("################## probe - gallery ##################")
     print(pgdict)
     return pgdict

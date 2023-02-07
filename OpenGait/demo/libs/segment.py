@@ -15,39 +15,29 @@ from tracker.byte_tracker import BYTETracker
 from tracking_utils.timer import Timer
 from tracking_utils.visualize import plot_tracking, plot_track
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(
-    os.path.dirname( os.path.abspath(__file__) )))) + "/OpenGait/datasets/")
-from pretreatment import pretreat
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(
+#     os.path.dirname( os.path.abspath(__file__) )))) + "/OpenGait/datasets/")
+from pretreatment import pretreat, img2pickle
 sys.path.append((os.path.dirname(os.path.abspath(__file__) )) + "/paddle/")
 from seg_demo import seg_opengait_image_new
 from yolox.exp import get_exp
 
 seg_cfgs = {  
-    # "gaitmodel":{
-    #     # "model_type": "Baseline",
-    #     "model_type": "BaselineDemo",
-    #     "cfg_path": "./configs/baseline/baseline_GREW.yaml",
-    # },
     "path":{
-        # "jsonpath": "./datasets/CASIA-B/demo.json",
-        # "gallerypath": "./opengait/demo/output/Inputvideos/demo6.mp4", #demo6
-        "probepath": "./opengait/demo/output/Inputvideos/demo4.mp4", # 5
-        "savesil_path": "./opengait/demo/output/Sil/", # 2
-        "pkl_save_path": "./opengait/demo/output/Pkl/",# 5
-        # "embspath": "./opengait/demo/output/Embs/",
-        # "whole_pkl_save_path": "./opengait/demo/output/Gaitembs/",
-        # "video_output_path": "./opengait/demo/output/Outputvideos/"
+        "probepath": "./demo/output/Inputvideos/demo4.mp4", # 5
+        "savesil_path": "./demo/output/Sil/", # 不能这么存要输入进来喽
+        "pkl_save_path": "./demo/output/Pkl/",# 5
     },
     "model":{
-        # "gait_model": "./opengait/demo/checkpoints/gait_model/Baseline-250000.pt",
-        "seg_model" : "./opengait/demo/checkpoints/seg_model/human_pp_humansegv1_lite_192x192_inference_model_with_softmax/deploy.yaml",# 3
-        "ckpt" :    "./opengait/demo/checkpoints/bytetrack_model/bytetrack_x_mot17.pth.tar",# 1
-        "exp_file": "./opengait/demo/checkpoints/bytetrack_model/yolox_x_mix_det.py", # 4
+        "seg_model" : "./demo/checkpoints/seg_model/human_pp_humansegv1_lite_192x192_inference_model_with_softmax/deploy.yaml",# 3
+        "ckpt" :    "./demo/checkpoints/bytetrack_model/bytetrack_x_mot17.pth.tar",# 1
+        "exp_file": "./demo/checkpoints/bytetrack_model/yolox_x_mix_det.py", # 4
     },
     "gait":{
         "dataset": "GREW", # 6
     },
     "device": "gpu",
+    "save_result": "True",
 }
 
 
@@ -74,7 +64,7 @@ def loadckpt(exp):
 exp = get_exp(seg_cfgs["model"]["exp_file"], None)
 model = loadckpt(exp)
 
-def imageflow_demo(save_folder, args, video):
+def imageflow_demo(video_path, save_folder):
     trt_file = None
     decoder = None
 
@@ -83,20 +73,20 @@ def imageflow_demo(save_folder, args, video):
     # logger.info("Args: {}".format(args))
     # model = loadckpt(exp, args, seg_cfgs)
 
-    predictor = Predictor(model, exp, trt_file, decoder, device, args.fp16)
-    # predictor = Predictor(model, exp, trt_file, decoder, device, True)
+    # predictor = Predictor(model, exp, trt_file, decoder, device, args.fp16)
+    predictor = Predictor(model, exp, trt_file, decoder, device, True)
 
-    cap = cv2.VideoCapture(video)
+    cap = cv2.VideoCapture(video_path)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
 
-    tracker = BYTETracker(args, frame_rate=30) #!!!!!!!!!!!!!!!!
+    tracker = BYTETracker(frame_rate=30) #!!!!!!!!!!!!!!!!
     timer = Timer()
     frame_id = 0
     ids = []
     fps = cap.get(cv2.CAP_PROP_FPS)
     os.makedirs(save_folder, exist_ok=True)
-    save_video_name = video.split("/")[-1]
+    save_video_name = video_path.split("/")[-1]
     save_video_path = osp.join(save_folder, save_video_name)
     print(f"video save_path is {save_video_path}")
     vid_writer = cv2.VideoWriter(
@@ -129,11 +119,10 @@ def imageflow_demo(save_folder, args, video):
                         mark = False
                         diff = tid - 1
                     tid = tid - diff
-                    vertical = tlwh[2] / tlwh[3] > args.aspect_ratio_thresh
-                    if tlwh[2] * tlwh[3] > args.min_box_area and not vertical:
-
-
-
+                    # vertical = tlwh[2] / tlwh[3] > args.aspect_ratio_thresh
+                    # if tlwh[2] * tlwh[3] > args.min_box_area and not vertical:
+                    vertical = tlwh[2] / tlwh[3] > 1.6
+                    if tlwh[2] * tlwh[3] > 10 and not vertical:
                         online_tlwhs.append(tlwh)
                         online_ids.append(tid)
                         online_scores.append(t.score)
@@ -183,7 +172,7 @@ def imageflow_demo(save_folder, args, video):
             else:
                 timer.toc()
                 online_im = img_info['raw_img']
-            if args.save_result:
+            if seg_cfgs["save_result"] == "True":
                 vid_writer.write(online_im)
             ch = cv2.waitKey(1)
             if ch == 27 or ch == ord("q") or ch == ord("Q"):
@@ -192,7 +181,7 @@ def imageflow_demo(save_folder, args, video):
             break
         frame_id += 1
 
-    if args.save_result:
+    if seg_cfgs["save_result"] == "True":
         res_file = osp.join(save_folder, f"{save_video_name}.txt")
         with open(res_file, 'w') as f:
             f.writelines(results)
@@ -200,24 +189,19 @@ def imageflow_demo(save_folder, args, video):
     ids = list(set(ids))
     return ids
 
-def writeresult(save_folder, args, pgdict, video):
+def writeresult(pgdict, video_path, save_folder):
     device = torch.device("cuda" if seg_cfgs["device"] == "gpu" else "cpu")
-    # exp = get_exp(seg_cfgs["model"]["exp_file"], None)
-    # logger.info("Args: {}".format(args))
-    # model = loadckpt(exp, args, seg_cfgs)
-
-
 
     trt_file = None
     decoder = None
-    predictor = Predictor(model, exp, trt_file, decoder, device, args.fp16)
+    predictor = Predictor(model, exp, trt_file, decoder, device, True)
     # video = seg_cfgs["path"]["probepath"]
-    cap = cv2.VideoCapture(video)
+    cap = cv2.VideoCapture(video_path)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
     fps = cap.get(cv2.CAP_PROP_FPS)
     os.makedirs(save_folder, exist_ok=True)
-    save_video_name = video.split("/")[-1]
+    save_video_name = video_path.split("/")[-1]
     save_video_path = save_video_name.split(".")[0]+ "After.mp4"
     save_video_path = osp.join(save_folder, save_video_path)
     print(f"video save_path is {save_video_path}")
@@ -226,7 +210,7 @@ def writeresult(save_folder, args, pgdict, video):
     )
     save_video_name = save_video_name.split(".")[0]
 
-    tracker = BYTETracker(args, frame_rate=30)
+    tracker = BYTETracker(frame_rate=30)
     timer = Timer()
     frame_id = 0
     results = []
@@ -255,8 +239,8 @@ def writeresult(save_folder, args, pgdict, video):
                     pid = "{}-{:03d}".format(save_video_name, track_id)
                     tid = pgdict[pid]
                     colorid = track_id
-                    vertical = tlwh[2] / tlwh[3] > args.aspect_ratio_thresh
-                    if tlwh[2] * tlwh[3] > args.min_box_area and not vertical:
+                    vertical = tlwh[2] / tlwh[3] > 1.6
+                    if tlwh[2] * tlwh[3] > 10 and not vertical:
                         online_tlwhs.append(tlwh)
                         online_ids.append(tid)
                         online_colors.append(colorid)
@@ -271,7 +255,7 @@ def writeresult(save_folder, args, pgdict, video):
             else:
                 timer.toc()
                 online_im = img_info['raw_img']
-            if args.save_result:
+            if seg_cfgs["save_result"] == "True":
                 vid_writer.write(online_im)
             ch = cv2.waitKey(1)
             if ch == 27 or ch == ord("q") or ch == ord("Q"):
@@ -280,7 +264,7 @@ def writeresult(save_folder, args, pgdict, video):
             break
         frame_id += 1
 
-    if args.save_result:
+    if seg_cfgs["save_result"] == "True":
         res_file = osp.join(save_folder, "result.txt")
         with open(res_file, 'w') as f:
             f.writelines(results)
@@ -288,20 +272,45 @@ def writeresult(save_folder, args, pgdict, video):
 
 
 
-def seg(args, video_save_folder, video):
+def seg(video_path, video_save_folder):
     if video_save_folder is None:
         pass
     # exp = get_exp(seg_cfgs["model"]["exp_file"], None)
     # args.device = torch.device("cuda" if args.device == "gpu" else "cpu")
     # logger.info("Args: {}".format(args))
     # model = loadckpt(exp, args, seg_cfgs)
-    ids = imageflow_demo(video_save_folder, args, video)
-    print(ids)
+
+
+    ids = imageflow_demo(video_path, video_save_folder)
+    # print(ids)
+
     # pretreat(Path(seg_cfgs["path"]["savesil_path"]), Path(seg_cfgs["path"]["pkl_save_path"]), 
     #             args.img_size, args.n_workers, args.verbose, seg_cfgs["gait"]["dataset"])
-    pretreat(Path(seg_cfgs["path"]["savesil_path"]), Path(seg_cfgs["path"]["pkl_save_path"]), 
+    # pretreat(Path(seg_cfgs["path"]["savesil_path"]), Path(seg_cfgs["path"]["pkl_save_path"]), 
+    #             64, 4, False, seg_cfgs["gait"]["dataset"])
+    # print(Path(seg_cfgs["path"]["savesil_path"]))
+    save_video_name = video_path.split("/")[-1]
+    save_video_name = save_video_name.split(".")[0]
+    result = pretreat(Path(seg_cfgs["path"]["savesil_path"], save_video_name), Path(seg_cfgs["path"]["pkl_save_path"]), 
+                64, 4, False, seg_cfgs["gait"]["dataset"])
+    # img = 0
+    print(len(result))
+    print(result)
+    # print(Path(seg_cfgs["path"]["savesil_path"], save_video_name))
+    # img, img1 = img2pickle(Path(seg_cfgs["path"]["savesil_path"], save_video_name), Path(seg_cfgs["path"]["pkl_save_path"]), 64, False, seg_cfgs["gait"]["dataset"])
+    # print(img)
+    # print("===============================================")
+    # print(img1)
+    return result
+
+def getsil(video_path):
+    save_video_name = video_path.split("/")[-1]
+    save_video_name = save_video_name.split(".")[0]
+    feats = pretreat(Path(seg_cfgs["path"]["savesil_path"], save_video_name), Path(seg_cfgs["path"]["pkl_save_path"]), 
                 64, 4, False, seg_cfgs["gait"]["dataset"])
 
+    print(feats)
+    return(feats)
 
 
 

@@ -276,7 +276,7 @@ class BaselineDemo(nn.Module):
         if training and self.engine_cfg['enable_float16']:
             self.Scaler = GradScaler()
         # self.save_path = "./gait_model/Baseline-250000.pt"
-        self.save_path = "./opengait/demo/checkpoints/gait_model/Baseline-250000.pt"
+        self.save_path = "./demo/checkpoints/gait_model/Baseline-250000.pt"
 
         self.build_network(cfgs['model_cfg'])
         self.init_parameters()
@@ -390,7 +390,9 @@ class BaselineDemo(nn.Module):
         typs = typs_batch
         vies = vies_batch
 
-        labs = list2var(labs_batch).long()
+        # labs = list2var(labs_batch).long()
+        labs = labs_batch[0]
+        print(labs)
 
         if seqL_batch is not None:
             seqL_batch = np2var(seqL_batch).int()
@@ -408,6 +410,7 @@ class BaselineDemo(nn.Module):
     def get_loader(self, data_cfg, target=None):
         sampler_cfg = self.cfgs['evaluator_cfg']['sampler']
         dataset = DataSet(data_cfg, target)
+        print(dataset)
 
         loader = tordata.DataLoader(
             dataset=dataset,
