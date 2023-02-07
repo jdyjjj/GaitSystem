@@ -21,19 +21,19 @@ cfgs = {
     },
     "path": {
         "jsonpath": "./datasets/CASIA-B/demo.json",
-        "gallerypath": "./opengait/demo/output/Inputvideos/demo6.mp4",  # demo6
-        "probepath": "./opengait/demo/output/Inputvideos/demo4.mp4",
-        "savesil_path": "./opengait/demo/output/Sil/",
-        "pkl_save_path": "./opengait/demo/output/Pkl/",
-        "embspath": "./opengait/demo/output/Embs/",
-        "whole_pkl_save_path": "./opengait/demo/output/Gaitembs/",
-        "video_output_path": "./opengait/demo/output/Outputvideos/"
+        "gallerypath": "./demo/output/Inputvideos/demo6.mp4",  # demo6
+        "probepath": "./demo/output/Inputvideos/demo4.mp4",
+        "savesil_path": "./demo/output/Sil/",
+        "pkl_save_path": "./demo/output/Pkl/",
+        "embspath": "./demo/output/Embs/",
+        "whole_pkl_save_path": "./demo/output/Gaitembs/",
+        "video_output_path": "./demo/output/Outputvideos/"
     },
     "model": {
-        "gait_model": "./opengait/demo/checkpoints/gait_model/Baseline-250000.pt",
-        "seg_model": "./opengait/demo/checkpoints/seg_model/human_pp_humansegv1_lite_192x192_inference_model_with_softmax/deploy.yaml",
-        "ckpt": "./opengait/demo/checkpoints/bytetrack_model/bytetrack_x_mot17.pth.tar",
-        "exp_file": "./opengait/demo/checkpoints/bytetrack_model/yolox_x_mix_det.py",
+        "gait_model": "./demo/checkpoints/gait_model/Baseline-250000.pt",
+        "seg_model": "./demo/checkpoints/seg_model/human_pp_humansegv1_lite_192x192_inference_model_with_softmax/deploy.yaml",
+        "ckpt": "./demo/checkpoints/bytetrack_model/bytetrack_x_mot17.pth.tar",
+        "exp_file": "./demo/checkpoints/bytetrack_model/yolox_x_mix_det.py",
     },
     "gait": {
         # "dataset": "CASIAB",
@@ -138,7 +138,7 @@ def main(args, cfgs):
             print("========= Load Embs..... ==========")
             with open(embs_path, 'rb') as f:
                 embsdic = pickle.load(f)
-                # print(embsdic)
+                print(embsdic)
                 print("========= Finish Load Embs..... ==========")
         pgdict1 = recognise(cfgs["path"]["probepath"], embsdic)
         pgdict2 = recognise(video, embsdic)
@@ -146,7 +146,7 @@ def main(args, cfgs):
         # pgdict = recognise(cfgs, embsdic, cfgs["path"]["probepath"])
 
         if args.save_result:
-            writeresult(video_save_folder, args, pgdict1, cfgs["path"]["probepath"])
+            writeresult(pgdict1, cfgs["path"]["probepath"], video_save_folder)
 
 
 if __name__ == "__main__":
